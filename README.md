@@ -1,4 +1,4 @@
-<img width="2134" height="1468" alt="image" src="https://github.com/user-attachments/assets/baae6c08-4485-4c9c-a20c-8889c88806a0" /><img width="1067" height="734" alt="Screenshot 2026-03-25 at 12 23 22" src="https://github.com/user-attachments/assets/2dde0975-3e1a-42b7-bfeb-1f1e3294b9e5" /># Sec-Cam
+# Sec-Cam
 
 A Raspberry Pi–based smart security camera system with a FastAPI backend, React dashboard, WebSocket-based device control, and live video streaming through a dedicated media server.
 
