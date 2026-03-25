@@ -166,6 +166,7 @@ Raspberry Pi Agent
 MediaMTX
     ↓ WebRTC / HLS
 Browser Viewer
+```
 
 ## Project Structure
 
@@ -211,6 +212,7 @@ sec-cam/
 └── uploads/                  # Captured snapshots / recordings
 
 > Adjust this tree if your actual folders are slightly different.
+```
 
 ---
 
