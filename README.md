@@ -1,4 +1,4 @@
-# Sec-Cam
+<img width="2134" height="1468" alt="image" src="https://github.com/user-attachments/assets/baae6c08-4485-4c9c-a20c-8889c88806a0" /><img width="1067" height="734" alt="Screenshot 2026-03-25 at 12 23 22" src="https://github.com/user-attachments/assets/2dde0975-3e1a-42b7-bfeb-1f1e3294b9e5" /># Sec-Cam
 
 A Raspberry Pi–based smart security camera system with a FastAPI backend, React dashboard, WebSocket-based device control, and live video streaming through a dedicated media server.
 
@@ -171,30 +171,44 @@ Browser Viewer
 
 ```bash
 sec-cam/
-├── backend/              # FastAPI server
-│   ├── app/
-│   │   ├── routers/
-│   │   ├── schemas/
-│   │   ├── core/
-│   │   └── main.py
-│   ├── uploads/
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── frontend/             # React dashboard
-│   ├── src/
-│   ├── package.json
-│   └── Dockerfile
-│
-├── agent/                # Raspberry Pi device agent
-│   ├── agent.py
-│   ├── webrtc_sender.py
-│   ├── requirements.txt
-│   └── Dockerfile
-│
+├── README.md
 ├── docker-compose.yml
-└── README.md
-```
+├── mediamtx.yml
+├── devices_db.json
+│
+├── backend/                  # FastAPI backend / control server
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py
+│       ├── core/             # Config, shared state, storage
+│       ├── routers/          # REST + WebSocket routes
+│       ├── schemas/          # Pydantic models
+│       └── services/         # Device / WebSocket services
+│
+├── frontend/                 # React dashboard
+│   ├── dockerfile
+│   ├── package.json
+│   ├── index.html
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── components/       # UI components (device cards, live view)
+│       ├── styles/           # Shared styles
+│       └── utils/            # API + time helpers
+│
+├── pi_agent/                 # Raspberry Pi device agent
+│   ├── main.py
+│   ├── config.py
+│   ├── state.py
+│   ├── commands.py
+│   ├── media.py
+│   ├── live.py
+│   ├── ws_client.py
+│   ├── utils.py
+│   └── requirements.txt
+│
+└── uploads/                  # Captured snapshots / recordings
 
 > Adjust this tree if your actual folders are slightly different.
 
@@ -318,13 +332,8 @@ Potential next steps:
 
 ## Screenshots
 
-
-
-Example:
-- Dashboard view
-- Device online status
-- Snapshot result
-- Live stream screen
+<img width="2134" height="1468" alt="image" src="https://github.com/user-attachments/assets/7799f1f4-f046-402c-873a-e4e9a48758cc" />
+<img width="991" height="777" alt="Screenshot 2026-03-25 at 12 27 48" src="https://github.com/user-attachments/assets/c3a2a0bd-8e73-4b36-b044-47d5256dc265" />
 
 ---
 
