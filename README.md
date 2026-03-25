@@ -210,8 +210,6 @@ sec-cam/
 │   └── requirements.txt
 │
 └── uploads/                  # Captured snapshots / recordings
-
-> Adjust this tree if your actual folders are slightly different.
 ```
 
 ---
