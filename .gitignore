@@ -1,0 +1,36 @@
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Node / Frontend
+node_modules/
+dist/
+
+# Runtime data
+uploads/*
+!uploads/.gitkeep
+captures/
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Misc logs
+*.log

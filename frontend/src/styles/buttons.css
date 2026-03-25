@@ -1,0 +1,157 @@
+/* Refresh Button */
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.6);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 12px;
+}
+
+.refresh-btn:hover {
+  background: rgba(56,189,248,0.08);
+  border-color: rgba(56,189,248,0.3);
+  color: #38bdf8;
+}
+
+.refresh-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2) inset;
+  background: rgba(56,189,248,0.15);
+}
+
+.refresh-btn.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Action Buttons */
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 9px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  letter-spacing: 0.2px;
+}
+
+.action-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Snapshot Button */
+.action-btn.snapshot {
+  background: #38bdf8;
+  color: #0a0a0f;
+}
+
+.action-btn.snapshot:hover {
+  background: #7dd3fc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(56,189,248,0.3);
+}
+
+.action-btn.snapshot:active {
+  background: #0ea5e9;
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(56,189,248,0.5) inset;
+}
+
+/* Record Button */
+.action-btn.record {
+  background: rgba(255,80,80,0.12);
+  border: 1px solid rgba(255,80,80,0.25);
+  color: #ff6b6b;
+}
+
+.action-btn.record:hover {
+  background: rgba(255,80,80,0.2);
+  border-color: rgba(255,80,80,0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(255,80,80,0.15);
+}
+
+.action-btn.record:active {
+  background: rgba(255,80,80,0.35);
+  border-color: rgba(255,80,80,0.6);
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(255,80,80,0.4) inset;
+}
+
+/* Live Button */
+.action-btn.live {
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.25);
+  color: #818cf8;
+}
+
+.action-btn.live:hover {
+  background: rgba(99,102,241,0.2);
+  border-color: rgba(99,102,241,0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(99,102,241,0.15);
+}
+
+.action-btn.live:active {
+  background: rgba(99,102,241,0.35);
+  border-color: rgba(99,102,241,0.6);
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(99,102,241,0.4) inset;
+}
+
+.action-btn.live.active {
+  background: rgba(99,102,241,0.25);
+  border-color: rgba(99,102,241,0.5);
+  color: #a5b4fc;
+}
+
+/* Seconds Input */
+.seconds-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 9px;
+  padding: 7px 12px;
+}
+
+.seconds-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+}
+
+.seconds-input {
+  background: none;
+  border: none;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  width: 36px;
+  text-align: center;
+  outline: none;
+}
+
+.seconds-input::-webkit-inner-spin-button,
+.seconds-input::-webkit-outer-spin-button {
+  opacity: 0.3;
+}

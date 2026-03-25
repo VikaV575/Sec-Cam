@@ -1,0 +1,44 @@
+.live-view-wrap {
+  margin-top: 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(99,102,241,0.2);
+  position: relative;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.live-view-wrap::before {
+  content: '● LIVE';
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #ff6b6b;
+  z-index: 10;
+  background: rgba(0,0,0,0.6);
+  padding: 3px 8px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.live-iframe {
+  width: 100%;
+  display: block;
+  max-height: 340px;
+  min-height: 260px;
+  background: #000;
+  border: 0;
+}
