@@ -34,3 +34,4 @@ captures/
 
 # Misc logs
 *.log
+devices_db.json
