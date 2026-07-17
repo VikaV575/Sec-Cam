@@ -1,204 +1,175 @@
 # Sec-Cam
 
-A Raspberry Pi–based smart security camera system with a FastAPI backend, React dashboard, WebSocket-based device control, and live video streaming through a dedicated media server.
+Sec-Cam is a Raspberry Pi–based smart security camera platform with a Python device agent, FastAPI control server, React dashboard, and browser live streaming through MediaMTX.
 
-## Overview
+The project demonstrates an end-to-end edge-device architecture involving REST APIs, WebSockets, asynchronous command delivery, media capture and upload, device presence tracking, and a browser-based control interface.
 
-**Sec-Cam** is a distributed IoT security camera project built around a Raspberry Pi camera device and a web dashboard.
+## Current Capabilities
 
-The system allows a remote user to:
-- register and monitor camera devices
-- request **snapshots**
-- record and upload **video clips**
-- view device **online/offline status**
-- send commands in real time using **WebSockets**
-- start and stop **live video streaming**
-- view live camera output in the browser using **WebRTC**
+### Raspberry Pi agent
 
-This project was built to simulate a real-world edge device + backend + frontend architecture, with room for future computer vision features such as event detection and smart alerts.
+- Connects to the backend through a persistent WebSocket.
+- Sends periodic heartbeat messages.
+- Receives and executes remote commands.
+- Captures JPEG snapshots with `rpicam-still`.
+- Records MP4 video clips with `rpicam-vid`.
+- Uploads captured media to the backend using multipart HTTP requests.
+- Starts and stops an RTMP live-streaming pipeline using `rpicam-vid` and `ffmpeg`.
+- Reconnects to the backend with increasing retry delays after connection failures.
+- Cleans up an active live-stream process when the agent shuts down.
 
----
+### FastAPI backend
 
-## Features
+- Creates, lists, and removes registered devices.
+- Persists the device registry in `devices_db.json`.
+- Tracks device connection state and `last_seen` timestamps.
+- Accepts media uploads and serves the `uploads/` directory over HTTP.
+- Validates command request bodies with Pydantic.
+- Rejects commands for missing or offline devices.
+- Queues remote commands and delivers them to connected devices through WebSockets.
+- Provides endpoints for starting, stopping, and retrieving live-stream metadata.
 
-### Implemented
-- Raspberry Pi device agent
-- Device registration and heartbeat system
-- Online/offline device tracking
-- Remote snapshot capture
-- Remote video recording and upload
-- FastAPI backend API
-- React frontend dashboard
-- Real-time command delivery via WebSockets
-- Browser-based live stream via **WebRTC**
-- Dedicated media server for live streaming (**MediaMTX**)
-- RTMP ingest pipeline from Raspberry Pi to media server
-- Dockerized local development environment
+### React frontend
 
-### Planned / Future Work
-- Motion detection
-- Cat / object detection using computer vision
-- Smart event alerts
-- Authentication and multi-user support
-- Cloud deployment
-- Media storage improvements
-- Recording history and timeline view
-- Stream startup and quality optimizations
+- Displays registered devices and their online/offline state.
+- Refreshes device information periodically and on demand.
+- Sends snapshot and video-recording commands.
+- Allows the recording duration to be selected.
+- Starts and stops live mode.
+- Embeds the MediaMTX WebRTC viewer in the dashboard.
+- Contains support for rendering a media link when an upload URL is supplied.
 
----
+### Automated tests
+
+The repository contains Python and frontend tests covering:
+
+- agent command handling and error reporting;
+- default recording behavior;
+- agent WebSocket message parsing and heartbeat generation;
+- device creation and removal;
+- offline and missing-device failures;
+- media upload and file persistence;
+- device online-status reporting;
+- live start/stop API behavior;
+- REST-to-WebSocket command delivery;
+- WebSocket connection, heartbeat, and disconnection flows;
+- React device controls, live-view behavior, empty states, and API utilities.
 
 ## Architecture
 
-The project consists of 4 main parts:
-
-### 1. Raspberry Pi Agent
-Runs on the Raspberry Pi and is responsible for:
-- connecting to the backend
-- sending heartbeats
-- receiving commands
-- capturing images / videos from the Pi camera
-- uploading media files
-- starting and stopping live streaming on demand
-
-For live streaming, the Pi uses:
-- `rpicam-vid` to capture H.264 video from the camera
-- `ffmpeg` to package and publish the stream over **RTMP**
-
-### 2. FastAPI Backend
-Acts as the **control server** and is responsible for:
-- managing devices
-- exposing REST API endpoints
-- handling uploads
-- tracking device status
-- delivering commands over WebSockets
-- triggering live stream start / stop actions
-
-The backend does **not** carry the video stream itself.  
-Instead, it controls the device and provides metadata / URLs used by the frontend.
-
-### 3. Media Server (MediaMTX)
-Acts as the **media plane** of the system and is responsible for:
-- receiving the live stream from the Raspberry Pi via **RTMP**
-- exposing the stream to clients using **WebRTC** / **HLS**
-- allowing multiple viewers to watch the same live stream
-- serving as the foundation for future recording / replay features
-
-This keeps live video handling separate from the backend API.
-
-### 4. React Frontend
-Provides a browser dashboard for:
-- viewing registered devices
-- checking online status
-- requesting snapshots / videos
-- viewing uploaded media
-- opening and controlling live view
-
----
-
-## Tech Stack
-
-### Backend
-- Python
-- FastAPI
-- Uvicorn
-- WebSockets
-- Pydantic
-
-### Frontend
-- React
-- Vite
-- JavaScript / TypeScript (depending on your setup)
-
-### Device / Edge
-- Raspberry Pi Zero 2 W
-- Raspberry Pi Camera Module NoIR
-- Python
-- `rpicam-vid`
-- `ffmpeg`
-
-### Media / Streaming
-- MediaMTX
-- RTMP
-- WebRTC
-- HLS
-
-### Dev / Infra
-- Docker
-- Docker Compose
-
----
-
-## How It Works
-
-### Device Registration
-A Raspberry Pi device registers with the backend and receives / uses a unique `device_id`.
-
-### Heartbeats
-The Pi agent periodically sends heartbeat messages so the backend knows the device is online.
-
-### Commands
-When the user clicks an action in the dashboard (for example, **Take Snapshot** or **Start Live**), the backend sends a command to the device via **WebSocket**.
-
-### Capture + Upload
-For snapshots and recordings, the device performs the action locally, saves the media, and uploads the result back to the backend.
-
-### Live View
-For live streaming:
-1. the frontend requests **Start Live**
-2. the backend sends a **start_live** command to the Pi
-3. the Pi starts a camera pipeline using `rpicam-vid` + `ffmpeg`
-4. the Pi publishes the stream to **MediaMTX** using **RTMP**
-5. the browser connects to the stream using **WebRTC**
-
-This architecture allows lower-latency live video while keeping the Raspberry Pi lightweight and the backend focused on device orchestration.
-
----
-
-## Live Streaming Flow
-
 ```text
-Browser (React)
-    ↓
-FastAPI Backend (control plane)
-    ↓ WebSocket command
-Raspberry Pi Agent
-    ↓ RTMP
-MediaMTX
-    ↓ WebRTC / HLS
-Browser Viewer
+                         control plane
+
+React dashboard ──REST──> FastAPI backend
+                              │
+                              │ queued commands over WebSocket
+                              ▼
+                       Raspberry Pi agent
+
+                          media plane
+
+Raspberry Pi camera
+        │
+        ├── snapshot / recording ──HTTP upload──> FastAPI `/uploads`
+        │
+        └── H.264 + ffmpeg ──RTMP──> MediaMTX ──WebRTC──> Browser
 ```
 
-## Project Structure
+The backend coordinates devices and commands, but it does not relay the live video stream. Live video is sent directly from the Raspberry Pi to MediaMTX and viewed by the browser through WebRTC.
 
-```bash
-sec-cam/
+## Main System Flows
+
+### Device setup and connection
+
+1. A device record is created through `POST /devices`.
+2. The returned device ID is configured on the Raspberry Pi.
+3. The agent connects to `WS /devices/{device_id}/ws`.
+4. The backend accepts the connection only if the device ID is registered.
+5. Connection and heartbeat messages update the device's `last_seen` value.
+
+### Remote snapshot or recording
+
+1. The browser sends a command to `POST /devices/{device_id}/command`.
+2. The backend verifies that the device exists and is currently connected.
+3. The command is placed in the device's asynchronous queue.
+4. The backend WebSocket sends the command to the Raspberry Pi agent.
+5. The agent captures the requested media.
+6. The agent uploads the file to `POST /devices/{device_id}/upload`.
+7. The backend saves the file under `uploads/`.
+
+### Live streaming
+
+1. The browser calls `POST /devices/{device_id}/live/start`.
+2. The backend sends a `start_live` command through the device WebSocket.
+3. The agent launches a `rpicam-vid` and `ffmpeg` pipeline.
+4. The stream is published to MediaMTX over RTMP.
+5. The browser opens the corresponding MediaMTX WebRTC viewer.
+6. Calling `POST /devices/{device_id}/live/stop` terminates the live process.
+
+## Technology Stack
+
+### Device agent
+
+- Python
+- `aiohttp`
+- `websockets`
+- Raspberry Pi camera tools (`rpicam-still`, `rpicam-vid`)
+- `ffmpeg`
+
+### Backend
+
+- Python 3.12
+- FastAPI
+- Uvicorn
+- Pydantic
+- WebSockets
+- JSON file persistence
+
+### Frontend
+
+- React 19
+- Vite
+- JavaScript
+- Vitest
+- React Testing Library
+
+### Streaming and local infrastructure
+
+- MediaMTX
+- RTMP ingest
+- WebRTC and HLS output
+- Docker Compose
+
+## Repository Structure
+
+```text
+raspberry-pi-security-camera/
 ├── README.md
 ├── docker-compose.yml
 ├── mediamtx.yml
-├── devices_db.json
+├── devices_db.json             # Local runtime data; not tracked by Git
+├── uploads/                    # Uploaded snapshots and recordings
 │
-├── backend/                  # FastAPI backend / control server
+├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── app/
 │       ├── main.py
-│       ├── core/             # Config, shared state, storage
-│       ├── routers/          # REST + WebSocket routes
-│       ├── schemas/          # Pydantic models
-│       └── services/         # Device / WebSocket services
+│       ├── core/               # Configuration, shared state, JSON storage
+│       ├── routers/            # REST and device WebSocket routes
+│       ├── schemas/            # Pydantic request models
+│       └── services/           # WebSocket connection and command queues
 │
-├── frontend/                 # React dashboard
+├── frontend/
 │   ├── dockerfile
 │   ├── package.json
-│   ├── index.html
+│   ├── vitest.config.js
 │   └── src/
 │       ├── App.jsx
-│       ├── main.jsx
-│       ├── components/       # UI components (device cards, live view)
-│       ├── styles/           # Shared styles
-│       └── utils/            # API + time helpers
+│       ├── components/
+│       └── utils/
 │
-├── pi_agent/                 # Raspberry Pi device agent
+├── pi_agent/
 │   ├── main.py
 │   ├── config.py
 │   ├── state.py
@@ -209,134 +180,234 @@ sec-cam/
 │   ├── utils.py
 │   └── requirements.txt
 │
-└── uploads/                  # Captured snapshots / recordings
+└── tests/
+    ├── unit/
+    │   ├── agent/
+    │   ├── backend/
+    │   └── frontend/
+    └── integration/
+        └── backend/
 ```
 
----
+## Backend API
 
-## API / Core Capabilities
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/` | Backend health response |
+| `POST` | `/devices` | Create a device from a JSON body containing `name` |
+| `GET` | `/devices` | List devices with their current WebSocket connection status |
+| `DELETE` | `/devices/{device_id}/remove` | Remove a device and disconnect it |
+| `POST` | `/devices/{device_id}/command` | Queue a command for an online device |
+| `POST` | `/devices/{device_id}/upload` | Upload a media file using multipart form data |
+| `GET` | `/devices/{device_id}/live` | Return live-stream metadata for a device |
+| `POST` | `/devices/{device_id}/live/start` | Send the live-start command |
+| `POST` | `/devices/{device_id}/live/stop` | Send the live-stop command |
+| `WS` | `/devices/{device_id}/ws` | Device command and heartbeat channel |
+| `GET` | `/uploads/{filename}` | Retrieve a saved upload |
 
-Example backend responsibilities include:
+Example generic commands:
 
-- `POST /devices/register` – register a device
-- `POST /devices/{device_id}/heartbeat` – update device status
-- `POST /devices/{device_id}/commands/snapshot` – request snapshot
-- `POST /devices/{device_id}/commands/video` – request video recording
-- `POST /devices/{device_id}/upload` – upload captured media
-- `WS /devices/{device_id}/ws` – real-time command channel
-- `POST /devices/{device_id}/live/start` – start live streaming
-- `POST /devices/{device_id}/live/stop` – stop live streaming
-- `GET /devices/{device_id}/live` – retrieve stream metadata
-- `WS /devices/{device_id}/ws` – real-time device command channel
+```json
+{"type": "snapshot", "seconds": null}
+```
 
----
+```json
+{"type": "record", "seconds": 10}
+```
 
-## Running Locally
+## Running the Local Services
 
 ### Prerequisites
-- Docker
-- Docker Compose
 
-### Start the backend + frontend
+- Docker and Docker Compose
+- A local network connection between the development computer and Raspberry Pi for device testing
+
+The database file is intentionally not tracked. Create the local runtime files before starting Docker Compose:
+
+```bash
+printf '{}\n' > devices_db.json
+mkdir -p uploads
+```
+
+Start the backend, frontend, and MediaMTX services:
+
 ```bash
 docker compose up --build
 ```
 
-Then open:
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8000`
+Open:
 
----
+- React dashboard: `http://localhost:5173`
+- FastAPI backend: `http://localhost:8000`
+- FastAPI interactive API documentation: `http://localhost:8000/docs`
+- MediaMTX WebRTC HTTP server: `http://localhost:8889`
+
+The frontend uses `http://localhost:8000` by default. A different API address can be supplied through `VITE_API_URL`.
+
+## Registering a Device
+
+Device registration is currently performed through the backend API rather than through the React dashboard.
+
+```bash
+curl -X POST http://localhost:8000/devices \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Front Door Camera"}'
+```
+
+The response contains the generated device ID:
+
+```json
+{
+  "id": "generated-device-id",
+  "name": "Front Door Camera",
+  "last_seen": null
+}
+```
+
+Use this exact ID when configuring the Raspberry Pi agent.
 
 ## Running the Raspberry Pi Agent
 
-On the Raspberry Pi, configure environment variables such as:
+### Raspberry Pi prerequisites
+
+- Raspberry Pi OS with the camera enabled
+- A supported Raspberry Pi camera
+- Python 3
+- `rpicam-still` and `rpicam-vid`
+- `ffmpeg`
+
+Install the agent's Python dependencies:
 
 ```bash
-SERVER_URL=http://<YOUR_SERVER_IP>:8000
-DEVICE_ID=<YOUR_DEVICE_ID>
+python3 -m pip install -r pi_agent/requirements.txt
 ```
 
-Then run the agent:
+Configure the agent. `SERVER_URL` and `RTMP_HOST` must point to the computer running the backend and MediaMTX, using an address reachable from the Raspberry Pi rather than `localhost`.
 
 ```bash
-python agent.py
+export SERVER_URL=http://<HOST_LAN_IP>:8000
+export DEVICE_ID=<REGISTERED_DEVICE_ID>
+export RTMP_HOST=<HOST_LAN_IP>
 ```
 
-If using the live stream sender as a separate process:
+Optional settings include:
 
 ```bash
-python webrtc_sender.py
+export WORK_DIR=./captures
+export HEARTBEAT_INTERVAL=15
+export WS_CONNECT_TIMEOUT=20
+export RTMP_PORT=1935
+export RTMP_APP=live
+export LIVE_WIDTH=1280
+export LIVE_HEIGHT=720
+export LIVE_FPS=24
+export LIVE_BITRATE=2000k
 ```
 
-> In production, the agent can be configured to run automatically as a system service on boot.
+Run the agent from the repository root:
 
----
+```bash
+python3 pi_agent/main.py
+```
 
-## Example Use Flow
+The live sender is part of the main agent; no separate `webrtc_sender.py` process is used.
 
-1. Start backend and frontend
-2. Start the Raspberry Pi agent
-3. Open the dashboard in the browser
-4. Confirm the device appears **online**
-5. Click **Take Snapshot** or **Record Video**
-6. View the uploaded media in the dashboard
-7. Open **Live View** to stream from the camera
+## Running the Tests
 
----
+Install the Python test dependencies together with the backend and agent dependencies:
 
-## Why This Project Is Interesting
+```bash
+python3 -m pip install \
+  -r backend/requirements.txt \
+  -r pi_agent/requirements.txt \
+  pytest pytest-asyncio httpx
+```
 
-This project is more than a basic CRUD app — it combines:
+Install the frontend dependencies:
 
-- **IoT / edge device communication**
-- **backend API design**
-- **real-time networking**
-- **media handling**
-- **browser-based live streaming**
-- **full-stack integration**
+```bash
+npm --prefix frontend install
+```
 
-It was designed as a practical systems project that mirrors challenges found in real-world products:
-- unreliable device connectivity
-- async communication
-- media transfer
-- low-latency streaming
-- service orchestration
+Run all Python unit and integration tests:
 
----
+```bash
+python3 -m pytest tests -v
+```
 
-## Challenges Solved
+Run only the Python unit tests:
 
-Some of the engineering challenges explored in this project include:
+```bash
+python3 -m pytest tests/unit -v
+```
 
-- keeping a remote device connected reliably
-- distinguishing online vs offline state
-- sending commands asynchronously
-- handling media uploads from an edge device
-- integrating live camera streaming into the browser
-- structuring a project across frontend / backend / device layers
+Run only the Python integration tests:
 
----
+```bash
+python3 -m pytest tests/integration -v
+```
 
-## Future Improvements
+Run the frontend tests once:
 
-Potential next steps:
-- add authentication and user accounts
-- persist device / media data in a database
-- deploy to a cloud server
-- add object detection or motion-triggered recording
-- build notifications / alerting
-- improve stream startup time and media quality
+```bash
+npm --prefix frontend run test:run
+```
 
----
+Run both Python and frontend test suites:
+
+```bash
+python3 -m pytest tests -v && npm --prefix frontend run test:run
+```
+
+For frontend watch mode:
+
+```bash
+npm --prefix frontend test
+```
+
+## Current Limitations
+
+- Device registration and removal are available through the API but are not yet exposed as dashboard controls.
+- Device data is persisted in a JSON file rather than a production database.
+- WebSocket connections and outgoing command queues are stored in memory.
+- Authentication, authorization, and multi-user support are not implemented.
+- Uploaded files are served by the backend, but upload history and automatic last-upload links are not yet connected to the dashboard.
+- Status messages returned by the agent are logged by the backend but are not yet surfaced as command progress or failure notifications in the UI.
+- The live viewer assumes MediaMTX is reachable on the browser's current hostname at port `8889`.
+- Snapshot, recording, and live-stream commands require Raspberry Pi camera tools and cannot perform real capture without the target hardware.
+
+## Reliability and Validation Work
+
+The project includes several reliability-oriented behaviors and tests:
+
+- commands for offline devices return a clear conflict response;
+- unknown devices are rejected by both REST and WebSocket routes;
+- malformed WebSocket messages are ignored without stopping the receiver loop;
+- agent commands emit started, completed, or error status messages;
+- failed camera and upload operations propagate error details;
+- live processes are prevented from starting twice;
+- live process state is reset when the process exits;
+- shutdown cleanup stops active live processes;
+- automated tests reset shared backend and WebSocket state between scenarios;
+- integration tests validate command delivery across REST, backend queues, and WebSockets.
+
+## Planned Improvements
+
+- Connect uploaded-media metadata and history to the dashboard.
+- Surface agent command progress and failures in the UI.
+- Add a dashboard flow for registering and removing devices.
+- Add persistent media metadata storage.
+- Add authentication and multiple-user support.
+- Add CI to run the Python and frontend tests automatically.
+- Add motion detection, event-triggered recording, and object detection.
+- Improve stream startup feedback, quality controls, and deployment configuration.
 
 ## Screenshots
 
-<img width="2134" height="1468" alt="image" src="https://github.com/user-attachments/assets/7799f1f4-f046-402c-873a-e4e9a48758cc" />
-<img width="991" height="777" alt="Screenshot 2026-03-25 at 12 27 48" src="https://github.com/user-attachments/assets/c3a2a0bd-8e73-4b36-b044-47d5256dc265" />
+<img width="2134" height="1468" alt="Sec-Cam dashboard" src="https://github.com/user-attachments/assets/7799f1f4-f046-402c-873a-e4e9a48758cc" />
 
----
+<img width="991" height="777" alt="Sec-Cam live view" src="https://github.com/user-attachments/assets/c3a2a0bd-8e73-4b36-b044-47d5256dc265" />
 
 ## Author
 
-Built as a personal systems / full-stack / IoT project.
+Built as a personal full-stack, IoT, networking, and software-testing project.
