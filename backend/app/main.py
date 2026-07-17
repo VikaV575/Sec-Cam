@@ -10,6 +10,7 @@ from .core.storage import load_devices
 from .routers.devices import router as devices_router
 from .routers.device_ws import router as device_ws_router
 
+
 app = FastAPI()
 
 app.add_middleware(
@@ -20,13 +21,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=UPLOAD_DIR),
+    name="uploads",
+)
 
 
 @app.on_event("startup")
 def startup_event():
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-
     loaded = load_devices()
     devices.update(loaded)
 

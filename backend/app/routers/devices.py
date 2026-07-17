@@ -35,12 +35,12 @@ def create_device(device: DeviceCreate):
 
 
 @router.delete("/{device_id}/remove")
-def remove_device(device_id: str):
+async def remove_device(device_id: str):
     removed_device = devices.pop(device_id, None)
     if removed_device is None:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    ws_manager.disconnect(device_id)
+    await ws_manager.disconnect(device_id)
     save_devices()
     return {"ok": True, "message": f"Device {device_id} removed"}
 
