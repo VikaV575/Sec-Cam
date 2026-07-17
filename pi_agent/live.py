@@ -1,6 +1,8 @@
 import asyncio
 import shlex
 import time
+import os
+import signal
 
 try:
     from .config import LIVE_BITRATE, LIVE_FPS, LIVE_HEIGHT, LIVE_WIDTH, RTMP_APP, RTMP_HOST, RTMP_PORT
@@ -89,6 +91,7 @@ async def start_live_stream(state: AgentState, stream_key: str) -> None:
             command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
         )
 
         await asyncio.sleep(2)
@@ -123,8 +126,13 @@ async def stop_live_stream(state: AgentState) -> None:
     try:
         await asyncio.wait_for(proc.wait(), timeout=5)
     except asyncio.TimeoutError:
-        print("[live] terminate timeout; killing process")
-        proc.kill()
+        print("[live] terminate timeout; killing process group")
+        
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
         await proc.wait()
 
     async with state.live_lock:
