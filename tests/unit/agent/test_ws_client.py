@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytest.importorskip("websockets")
+
 from pi_agent.state import AgentState
 from pi_agent.ws_client import heartbeat_loop, receiver_loop
 
