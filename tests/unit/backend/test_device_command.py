@@ -18,10 +18,14 @@ def test_send_record_command_to_existing_device():
         "last_seen": None,
     }
 
-    with patch(
-        "backend.app.routers.devices.ws_manager.push_command",
-        new_callable=AsyncMock,
-    ) as mock_push_command:
+    with (
+        patch("backend.app.core.activity.uuid.uuid4", return_value="command-fixed-id"),
+        patch("backend.app.routers.devices.save_devices"),
+        patch(
+            "backend.app.routers.devices.ws_manager.push_command",
+            new_callable=AsyncMock,
+        ) as mock_push_command,
+    ):
         response = client.post(
             f"/devices/{device_id}/command",
             json={
@@ -32,23 +36,32 @@ def test_send_record_command_to_existing_device():
 
     assert response.status_code == 200
 
-    assert response.json() == {
-        "ok": True,
-        "message": "Command queued for online device",
-    }
+    response_data = response.json()
+    assert response_data["ok"] is True
+    assert response_data["message"] == "Command queued for online device"
+
+    command = response_data["command"]
+    assert command["id"] == "command-fixed-id"
+    assert command["type"] == "record"
+    assert command["seconds"] == 10
+    assert command["status"] == "queued"
+    assert command["error"] is None
+    assert command["created_at"]
+    assert command["updated_at"] == command["created_at"]
+    assert devices[device_id]["commands"][0] == command
 
     mock_push_command.assert_awaited_once_with(
         device_id,
         {
             "type": "record",
             "seconds": 10,
+            "id": "command-fixed-id",
         },
     )
 
     devices.pop(device_id, None)
-    
-    
-    
+
+
 def test_send_command_to_missing_device_returns_404():
     missing_device_id = "does-not-exist"
 
@@ -67,14 +80,10 @@ def test_send_command_to_missing_device_returns_404():
         )
 
     assert response.status_code == 404
-
-    assert response.json() == {
-        "detail": "Device not found",
-    }
-
+    assert response.json() == {"detail": "Device not found"}
     mock_push_command.assert_not_awaited()
-    
-    
+
+
 def test_command_without_type_returns_422():
     device_id = "camera-123"
 
@@ -98,7 +107,6 @@ def test_command_without_type_returns_422():
     error_details = response.json()["detail"]
     assert error_details[0]["loc"] == ["body", "type"]
     assert error_details[0]["type"] == "missing"
-
     mock_push_command.assert_not_awaited()
 
     devices.pop(device_id, None)
