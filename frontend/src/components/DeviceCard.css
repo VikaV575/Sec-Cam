@@ -105,7 +105,8 @@
   flex-wrap: wrap;
 }
 
-.action-btn:disabled {
+.action-btn:disabled,
+.media-delete-btn:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -162,13 +163,18 @@
   border-radius: 9px;
   background: rgba(255,255,255,0.025);
   color: inherit;
-  text-decoration: none;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
 .media-item:hover {
   border-color: rgba(56,189,248,0.35);
   transform: translateY(-1px);
+}
+
+.media-preview-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }
 
 .media-item img,
@@ -196,6 +202,25 @@
   color: rgba(255,255,255,0.35);
   font-size: 9px;
   text-transform: capitalize;
+}
+
+.media-delete-btn {
+  width: calc(100% - 12px);
+  margin: 0 6px 6px;
+  padding: 5px 7px;
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 6px;
+  background: rgba(248,113,113,0.06);
+  color: rgba(252,165,165,0.75);
+  cursor: pointer;
+  font-size: 9px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.media-delete-btn:hover:not(:disabled) {
+  border-color: rgba(248,113,113,0.4);
+  background: rgba(248,113,113,0.12);
+  color: #fca5a5;
 }
 
 .command-list {
