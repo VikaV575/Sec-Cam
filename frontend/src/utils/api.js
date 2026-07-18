@@ -30,6 +30,13 @@ export async function record(deviceId, seconds) {
   return sendCommand(deviceId, { type: "record", seconds });
 }
 
+export async function deleteMedia(deviceId, mediaId) {
+  const res = await fetch(`${API}/devices/${deviceId}/media/${mediaId}`, {
+    method: "DELETE",
+  });
+  return readJson(res);
+}
+
 export async function startLive(deviceId) {
   const res = await fetch(`${API}/devices/${deviceId}/live/start`, {
     method: "POST",
