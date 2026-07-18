@@ -23,7 +23,6 @@
   border-color: rgba(255,255,255,0.14);
 }
 
-/* Card Header */
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -46,7 +45,6 @@
   letter-spacing: 0.5px;
 }
 
-/* Badge */
 .badge {
   display: flex;
   align-items: center;
@@ -83,12 +81,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 .last-seen {
@@ -98,14 +92,12 @@
   text-align: right;
 }
 
-/* Divider */
 .divider {
   height: 1px;
   background: rgba(255,255,255,0.05);
   margin-bottom: 18px;
 }
 
-/* Actions */
 .actions {
   display: flex;
   gap: 10px;
@@ -113,23 +105,184 @@
   flex-wrap: wrap;
 }
 
-/* Upload Link */
-.upload-link {
-  margin-top: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: rgba(56,189,248,0.6);
-  text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 7px;
-  border: 1px solid rgba(56,189,248,0.15);
-  transition: all 0.15s ease;
+.action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
-.upload-link:hover {
-  color: #38bdf8;
-  background: rgba(56,189,248,0.05);
+.action-error {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(248,113,113,0.25);
+  background: rgba(248,113,113,0.08);
+  color: #fca5a5;
+  font-size: 11px;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.75fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.activity-panel {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.12);
+}
+
+.activity-title {
+  margin-bottom: 12px;
+  color: rgba(255,255,255,0.78);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.activity-empty {
+  color: rgba(255,255,255,0.28);
+  font-size: 11px;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.media-item {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 9px;
+  background: rgba(255,255,255,0.025);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.media-item:hover {
+  border-color: rgba(56,189,248,0.35);
+  transform: translateY(-1px);
+}
+
+.media-item img,
+.media-item video,
+.file-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #080b11;
+}
+
+.file-preview {
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,0.35);
+  font-size: 11px;
+}
+
+.media-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 7px;
+  color: rgba(255,255,255,0.35);
+  font-size: 9px;
+  text-transform: capitalize;
+}
+
+.command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.command-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.045);
+}
+
+.command-row:first-child {
+  padding-top: 0;
+}
+
+.command-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.command-name {
+  color: rgba(255,255,255,0.72);
+  font-size: 11px;
+}
+
+.command-time {
+  margin-top: 3px;
+  color: rgba(255,255,255,0.25);
+  font-size: 9px;
+}
+
+.command-error {
+  max-width: 230px;
+  margin-top: 4px;
+  color: #fca5a5;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.command-status {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.5);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.command-status.queued {
+  border-color: rgba(250,204,21,0.25);
+  background: rgba(250,204,21,0.08);
+  color: #fde047;
+}
+
+.command-status.running {
   border-color: rgba(56,189,248,0.3);
+  background: rgba(56,189,248,0.09);
+  color: #7dd3fc;
+}
+
+.command-status.completed {
+  border-color: rgba(74,222,128,0.25);
+  background: rgba(74,222,128,0.08);
+  color: #86efac;
+}
+
+.command-status.failed {
+  border-color: rgba(248,113,113,0.3);
+  background: rgba(248,113,113,0.09);
+  color: #fca5a5;
+}
+
+@media (max-width: 900px) {
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
