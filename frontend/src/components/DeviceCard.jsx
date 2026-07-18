@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { API } from "../constants.js";
 import { isOnline, timeAgo } from "../utils/time.js";
-import { snapshot, record, startLive, stopLive } from "../utils/api.js";
+import { deleteMedia, snapshot, record, startLive, stopLive } from "../utils/api.js";
 import LiveView from "./LiveView.jsx";
 import "./DeviceCard.css";
 
@@ -30,6 +30,7 @@ export default function DeviceCard({ device, onActivityChange }) {
   const [isLive, setIsLive] = useState(false);
   const [liveLoading, setLiveLoading] = useState(false);
   const [commandLoading, setCommandLoading] = useState(false);
+  const [deletingMediaId, setDeletingMediaId] = useState("");
   const [actionError, setActionError] = useState("");
   const deviceOnline = isOnline(device.last_seen);
   const media = device.media || [];
@@ -47,6 +48,24 @@ export default function DeviceCard({ device, onActivityChange }) {
       setActionError(error.message || "Command failed");
     } finally {
       setCommandLoading(false);
+    }
+  }
+
+  async function handleDeleteMedia(item) {
+    if (deletingMediaId) return;
+
+    const confirmed = window.confirm(`Delete ${item.filename}?`);
+    if (!confirmed) return;
+
+    setDeletingMediaId(item.id);
+    setActionError("");
+    try {
+      await deleteMedia(device.id, item.id);
+      await onActivityChange?.();
+    } catch (error) {
+      setActionError(error.message || "Failed to delete media");
+    } finally {
+      setDeletingMediaId("");
     }
   }
 
@@ -155,26 +174,35 @@ export default function DeviceCard({ device, onActivityChange }) {
               {media.slice(0, 6).map((item) => {
                 const url = absoluteMediaUrl(item.url);
                 return (
-                  <a
-                    key={item.id}
-                    className="media-item"
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={item.filename}
-                  >
-                    {item.media_type === "image" ? (
-                      <img src={url} alt={item.filename} loading="lazy" />
-                    ) : item.media_type === "video" ? (
-                      <video src={url} preload="metadata" controls />
-                    ) : (
-                      <div className="file-preview">File</div>
-                    )}
+                  <div className="media-item" key={item.id} title={item.filename}>
+                    <a
+                      className="media-preview-link"
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {item.media_type === "image" ? (
+                        <img src={url} alt={item.filename} loading="lazy" />
+                      ) : item.media_type === "video" ? (
+                        <video src={url} preload="metadata" controls />
+                      ) : (
+                        <div className="file-preview">File</div>
+                      )}
+                    </a>
                     <div className="media-meta">
                       <span>{item.media_type}</span>
                       <span>{timeAgo(item.uploaded_at)}</span>
                     </div>
-                  </a>
+                    <button
+                      className="media-delete-btn"
+                      type="button"
+                      onClick={() => handleDeleteMedia(item)}
+                      disabled={deletingMediaId === item.id}
+                      aria-label={`Delete ${item.filename}`}
+                    >
+                      {deletingMediaId === item.id ? "..." : "Delete"}
+                    </button>
+                  </div>
                 );
               })}
             </div>
