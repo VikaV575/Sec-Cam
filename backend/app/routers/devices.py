@@ -2,8 +2,16 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 
-from ..core.activity import add_command, add_media, ensure_activity, update_command_status
+from ..core.activity import (
+    add_command,
+    add_media,
+    ensure_activity,
+    prune_missing_media,
+    remove_media,
+    update_command_status,
+)
 from ..core.config import UPLOAD_DIR, ISRAEL_TZ
 from ..core.state import devices
 from ..core.storage import save_devices
@@ -26,6 +34,14 @@ def build_live_info(device_id: str) -> dict:
 def safe_filename_part(value: str) -> str:
     cleaned = "".join(char if char.isalnum() or char in "-_" else "_" for char in value)
     return cleaned.strip("_") or "camera"
+
+
+def media_path(filename: str) -> Path:
+    upload_root = Path(UPLOAD_DIR).resolve()
+    path = (upload_root / filename).resolve()
+    if path.parent != upload_root:
+        raise HTTPException(status_code=400, detail="Invalid media path")
+    return path
 
 
 async def queue_device_command(device_id: str, command: dict) -> dict:
@@ -104,17 +120,50 @@ async def upload_file(device_id: str, file: UploadFile = File(...)):
     }
 
 
+@router.delete("/{device_id}/media/{media_id}")
+async def delete_media(device_id: str, media_id: str):
+    if device_id not in devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    device = devices[device_id]
+    item = remove_media(device, media_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    path = media_path(item.get("filename", ""))
+    file_deleted = False
+    try:
+        path.unlink()
+        file_deleted = True
+    except FileNotFoundError:
+        pass
+
+    save_devices()
+    return {
+        "ok": True,
+        "media_id": media_id,
+        "file_deleted": file_deleted,
+    }
+
+
 @router.get("")
 async def list_devices():
     result = []
+    activity_changed = False
 
     for device in devices.values():
         ensure_activity(device)
+        if prune_missing_media(device, UPLOAD_DIR):
+            activity_changed = True
+
         device_copy = device.copy()
         device_copy["media"] = list(device["media"])
         device_copy["commands"] = list(device["commands"])
         device_copy["online"] = await ws_manager.is_connected(device["id"])
         result.append(device_copy)
+
+    if activity_changed:
+        save_devices()
 
     return result
 
