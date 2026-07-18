@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ..core.activity import update_command_status
 from ..core.state import devices
 from ..core.storage import save_devices
 from ..services.device_ws_manager import ws_manager
@@ -28,7 +29,6 @@ async def device_ws(device_id: str, websocket: WebSocket):
             print("waiting for command...")
             cmd = await q.get()
             print("got command from queue:", cmd)
-
             payload = {"type": "command", "command": cmd}
             print("about to send:", payload)
 
@@ -43,7 +43,22 @@ async def device_ws(device_id: str, websocket: WebSocket):
         while True:
             msg = await websocket.receive_json()
             print("[ws from device]", device_id, msg)
-            devices[device_id]["last_seen"] = datetime.now(timezone.utc).isoformat()
+
+            device = devices[device_id]
+            device["last_seen"] = datetime.now(timezone.utc).isoformat()
+
+            if msg.get("type") == "status":
+                command = msg.get("command") or {}
+                command_id = command.get("id")
+                if command_id:
+                    update_command_status(
+                        device,
+                        command_id=command_id,
+                        agent_status=str(msg.get("status") or "unknown"),
+                        error=msg.get("error"),
+                        meta=msg.get("meta"),
+                    )
+
             save_devices()
 
     try:
