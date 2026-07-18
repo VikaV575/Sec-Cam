@@ -1,9 +1,11 @@
 from backend.app.core.activity import (
+    MAX_COMMAND_ITEMS,
     add_command,
     add_media,
     ensure_activity,
     pop_media,
     prune_missing_media,
+    trim_command_history,
     update_command_status,
 )
 
@@ -17,6 +19,28 @@ def test_add_command_creates_trackable_queued_record():
     assert payload["type"] == "record"
     assert record["status"] == "queued"
     assert device["commands"][0] == record
+
+
+def test_add_command_keeps_only_five_newest_records():
+    device = {"commands": [], "media": []}
+
+    for index in range(7):
+        add_command(device, {"type": "record", "seconds": index})
+
+    assert len(device["commands"]) == MAX_COMMAND_ITEMS == 5
+    assert [command["seconds"] for command in device["commands"]] == [6, 5, 4, 3, 2]
+
+
+def test_trim_command_history_cleans_existing_saved_data():
+    device = {
+        "commands": [{"id": str(index)} for index in range(8)],
+        "media": [],
+    }
+
+    removed = trim_command_history(device)
+
+    assert [command["id"] for command in device["commands"]] == ["0", "1", "2", "3", "4"]
+    assert [command["id"] for command in removed] == ["5", "6", "7"]
 
 
 def test_update_command_status_maps_agent_values():
