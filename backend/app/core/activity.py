@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 
 MAX_MEDIA_ITEMS = 24
-MAX_COMMAND_ITEMS = 20
+MAX_COMMAND_ITEMS = 5
 
 STATUS_MAP = {
     "started": "running",
@@ -27,6 +27,17 @@ def ensure_activity(device: dict) -> dict:
     return device
 
 
+def trim_command_history(device: dict) -> list[dict]:
+    """Keep only the newest command records and return the removed records."""
+    ensure_activity(device)
+
+    removed = device["commands"][MAX_COMMAND_ITEMS:]
+    if removed:
+        del device["commands"][MAX_COMMAND_ITEMS:]
+
+    return removed
+
+
 def add_command(device: dict, command: dict) -> tuple[dict, dict]:
     ensure_activity(device)
 
@@ -42,7 +53,7 @@ def add_command(device: dict, command: dict) -> tuple[dict, dict]:
     }
 
     device["commands"].insert(0, record)
-    del device["commands"][MAX_COMMAND_ITEMS:]
+    trim_command_history(device)
     return payload, record
 
 
