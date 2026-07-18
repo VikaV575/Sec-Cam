@@ -3,6 +3,7 @@ import os
 import uuid
 from datetime import datetime
 
+from ..core.activity import add_command, add_media, ensure_activity, update_command_status
 from ..core.config import UPLOAD_DIR, ISRAEL_TZ
 from ..core.state import devices
 from ..core.storage import save_devices
@@ -22,6 +23,30 @@ def build_live_info(device_id: str) -> dict:
     }
 
 
+def safe_filename_part(value: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char in "-_" else "_" for char in value)
+    return cleaned.strip("_") or "camera"
+
+
+async def queue_device_command(device_id: str, command: dict) -> dict:
+    if device_id not in devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    device = devices[device_id]
+    payload, record = add_command(device, command)
+    save_devices()
+
+    try:
+        await ws_manager.push_command(device_id, payload)
+    except Exception as error:
+        detail = getattr(error, "detail", str(error))
+        update_command_status(device, record["id"], "error", error=str(detail))
+        save_devices()
+        raise
+
+    return record
+
+
 @router.post("")
 def create_device(device: DeviceCreate):
     device_id = str(uuid.uuid4())
@@ -29,6 +54,8 @@ def create_device(device: DeviceCreate):
         "id": device_id,
         "name": device.name,
         "last_seen": None,
+        "media": [],
+        "commands": [],
     }
     save_devices()
     return devices[device_id]
@@ -50,16 +77,31 @@ async def upload_file(device_id: str, file: UploadFile = File(...)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    name = devices[device_id]["name"]
-    ts = datetime.now(ISRAEL_TZ).strftime("%Y%m%d_%H%M")
-    safe_name = file.filename or "file.bin"
-    filename = f"{name}_{ts}_{safe_name}"
+    device = devices[device_id]
+    name = safe_filename_part(device["name"])
+    ts = datetime.now(ISRAEL_TZ).strftime("%Y%m%d_%H%M%S_%f")
+    original_name = os.path.basename(file.filename or "file.bin")
+    filename = f"{name}_{ts}_{original_name}"
     path = os.path.join(UPLOAD_DIR, filename)
+    contents = await file.read()
 
-    with open(path, "wb") as f:
-        f.write(await file.read())
+    with open(path, "wb") as output:
+        output.write(contents)
 
-    return {"ok": True, "saved_to": path}
+    media = add_media(
+        device,
+        filename=filename,
+        content_type=file.content_type,
+        size_bytes=len(contents),
+    )
+    save_devices()
+
+    return {
+        "ok": True,
+        "saved_to": path,
+        "url": media["url"],
+        "media": media,
+    }
 
 
 @router.get("")
@@ -67,7 +109,10 @@ async def list_devices():
     result = []
 
     for device in devices.values():
+        ensure_activity(device)
         device_copy = device.copy()
+        device_copy["media"] = list(device["media"])
+        device_copy["commands"] = list(device["commands"])
         device_copy["online"] = await ws_manager.is_connected(device["id"])
         result.append(device_copy)
 
@@ -76,13 +121,16 @@ async def list_devices():
 
 @router.post("/{device_id}/command")
 async def send_command(device_id: str, command: CommandCreate):
-    if device_id not in devices:
-        raise HTTPException(status_code=404, detail="Device not found")
+    record = await queue_device_command(
+        device_id,
+        command.model_dump(exclude_none=True),
+    )
 
-    cmd = command.model_dump()
-    await ws_manager.push_command(device_id, cmd)
-
-    return {"ok": True, "message": "Command queued for online device"}
+    return {
+        "ok": True,
+        "message": "Command queued for online device",
+        "command": record,
+    }
 
 
 @router.get("/{device_id}/live")
@@ -99,37 +147,35 @@ async def get_live_info(device_id: str):
 
 @router.post("/{device_id}/live/start")
 async def start_live(device_id: str):
-    if device_id not in devices:
-        raise HTTPException(status_code=404, detail="Device not found")
-
-    command = {
-        "type": "start_live",
-        "stream_key": device_id,
-    }
-
-    await ws_manager.push_command(device_id, command)
+    record = await queue_device_command(
+        device_id,
+        {
+            "type": "start_live",
+            "stream_key": device_id,
+        },
+    )
 
     return {
         "ok": True,
         "message": "Live start command sent",
         "device_id": device_id,
+        "command": record,
         "live": build_live_info(device_id),
     }
 
 
 @router.post("/{device_id}/live/stop")
 async def stop_live(device_id: str):
-    if device_id not in devices:
-        raise HTTPException(status_code=404, detail="Device not found")
-
-    command = {
-        "type": "stop_live",
-    }
-
-    await ws_manager.push_command(device_id, command)
+    record = await queue_device_command(
+        device_id,
+        {
+            "type": "stop_live",
+        },
+    )
 
     return {
         "ok": True,
         "message": "Live stop command sent",
         "device_id": device_id,
+        "command": record,
     }
