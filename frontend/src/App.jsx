@@ -6,7 +6,6 @@ import "./App.css";
 
 export default function App() {
   const [devices, setDevices] = useState([]);
-  const [lastUploadUrlById] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [, setTick] = useState(0);
 
@@ -15,6 +14,8 @@ export default function App() {
     try {
       const data = await refreshDevices();
       setDevices(data);
+    } catch (error) {
+      console.error("Failed to refresh devices", error);
     } finally {
       setTimeout(() => setRefreshing(false), 400);
     }
@@ -69,11 +70,11 @@ export default function App() {
             <div>Waiting for cameras to connect…</div>
           </div>
         ) : (
-          devices.map((d) => (
+          devices.map((device) => (
             <DeviceCard
-              key={d.id}
-              device={d}
-              lastUploadUrl={lastUploadUrlById[d.id]}
+              key={device.id}
+              device={device}
+              onActivityChange={handleRefreshDevices}
             />
           ))
         )}
