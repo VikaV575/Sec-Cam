@@ -55,7 +55,7 @@ Some of the engineering challenges explored in this project include:
 - handling media uploads from an edge device
 - integrating live camera streaming into the browser
 - structuring a project across frontend / backend / device layers
-- 
+  
 ## Main API Endpoints
 
 | Method | Endpoint | Purpose |
