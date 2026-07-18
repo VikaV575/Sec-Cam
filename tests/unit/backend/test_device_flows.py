@@ -29,16 +29,26 @@ def test_websocket_connected_device_receives_remote_command():
 
     devices[device_id] = {"id": device_id, "name": "Front Door", "last_seen": None}
 
-    with patch("backend.app.routers.device_ws.save_devices"), client.websocket_connect(
-        f"/devices/{device_id}/ws"
-    ) as websocket:
+    with (
+        patch("backend.app.core.activity.uuid.uuid4", return_value="command-ws-id"),
+        patch("backend.app.routers.device_ws.save_devices"),
+        patch("backend.app.routers.devices.save_devices"),
+        client.websocket_connect(f"/devices/{device_id}/ws") as websocket,
+    ):
         response = client.post(f"/devices/{device_id}/command", json=command_payload)
 
         assert response.status_code == 200
-        assert response.json()["ok"] is True
+        response_command = response.json()["command"]
+        assert response_command["id"] == "command-ws-id"
+        assert response_command["status"] == "queued"
+
         assert websocket.receive_json() == {
             "type": "command",
-            "command": command_payload,
+            "command": {
+                "type": "record",
+                "seconds": 8,
+                "id": "command-ws-id",
+            },
         }
 
 
@@ -46,7 +56,10 @@ def test_upload_file_saves_media_for_existing_device(tmp_path):
     device_id = "camera-upload-1"
     devices[device_id] = {"id": device_id, "name": "KitchenCam", "last_seen": None}
 
-    with patch("backend.app.routers.devices.UPLOAD_DIR", str(tmp_path)):
+    with (
+        patch("backend.app.routers.devices.UPLOAD_DIR", str(tmp_path)),
+        patch("backend.app.routers.devices.save_devices"),
+    ):
         response = client.post(
             f"/devices/{device_id}/upload",
             files={"file": ("snapshot.jpg", b"img-bytes", "image/jpeg")},
@@ -58,6 +71,9 @@ def test_upload_file_saves_media_for_existing_device(tmp_path):
     assert "KitchenCam_" in response_data["saved_to"]
     assert response_data["saved_to"].endswith("_snapshot.jpg")
     assert tmp_path.joinpath(Path(response_data["saved_to"]).name).read_bytes() == b"img-bytes"
+    assert response_data["media"]["media_type"] == "image"
+    assert response_data["media"]["content_type"] == "image/jpeg"
+    assert response_data["media"]["size_bytes"] == len(b"img-bytes")
 
 
 def test_list_devices_returns_online_status_from_ws_manager():
@@ -75,16 +91,22 @@ def test_list_devices_returns_online_status_from_ws_manager():
     payload = {item["id"]: item for item in response.json()}
     assert payload["camera-1"]["online"] is True
     assert payload["camera-2"]["online"] is False
+    assert payload["camera-1"]["media"] == []
+    assert payload["camera-1"]["commands"] == []
 
 
 def test_start_live_sends_command_and_returns_stream_metadata():
     device_id = "camera-live-start"
     devices[device_id] = {"id": device_id, "name": "Backyard", "last_seen": None}
 
-    with patch(
-        "backend.app.routers.devices.ws_manager.push_command",
-        new_callable=AsyncMock,
-    ) as mock_push_command:
+    with (
+        patch("backend.app.core.activity.uuid.uuid4", return_value="start-live-id"),
+        patch("backend.app.routers.devices.save_devices"),
+        patch(
+            "backend.app.routers.devices.ws_manager.push_command",
+            new_callable=AsyncMock,
+        ) as mock_push_command,
+    ):
         response = client.post(f"/devices/{device_id}/live/start")
 
     assert response.status_code == 200
@@ -93,10 +115,17 @@ def test_start_live_sends_command_and_returns_stream_metadata():
     assert response_data["device_id"] == device_id
     assert response_data["live"]["stream_key"] == device_id
     assert response_data["live"]["webrtc_url"].endswith(f"/live/{device_id}")
+    assert response_data["command"]["id"] == "start-live-id"
+    assert response_data["command"]["type"] == "start_live"
+    assert response_data["command"]["status"] == "queued"
 
     mock_push_command.assert_awaited_once_with(
         device_id,
-        {"type": "start_live", "stream_key": device_id},
+        {
+            "type": "start_live",
+            "stream_key": device_id,
+            "id": "start-live-id",
+        },
     )
 
 
@@ -104,17 +133,29 @@ def test_stop_live_sends_stop_command():
     device_id = "camera-live-stop"
     devices[device_id] = {"id": device_id, "name": "Garage", "last_seen": None}
 
-    with patch(
-        "backend.app.routers.devices.ws_manager.push_command",
-        new_callable=AsyncMock,
-    ) as mock_push_command:
+    with (
+        patch("backend.app.core.activity.uuid.uuid4", return_value="stop-live-id"),
+        patch("backend.app.routers.devices.save_devices"),
+        patch(
+            "backend.app.routers.devices.ws_manager.push_command",
+            new_callable=AsyncMock,
+        ) as mock_push_command,
+    ):
         response = client.post(f"/devices/{device_id}/live/stop")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "ok": True,
-        "message": "Live stop command sent",
-        "device_id": device_id,
-    }
+    response_data = response.json()
+    assert response_data["ok"] is True
+    assert response_data["message"] == "Live stop command sent"
+    assert response_data["device_id"] == device_id
+    assert response_data["command"]["id"] == "stop-live-id"
+    assert response_data["command"]["type"] == "stop_live"
+    assert response_data["command"]["status"] == "queued"
 
-    mock_push_command.assert_awaited_once_with(device_id, {"type": "stop_live"})
+    mock_push_command.assert_awaited_once_with(
+        device_id,
+        {
+            "type": "stop_live",
+            "id": "stop-live-id",
+        },
+    )
