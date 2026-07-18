@@ -8,8 +8,8 @@ from ..core.activity import (
     add_command,
     add_media,
     ensure_activity,
+    pop_media,
     prune_missing_media,
-    remove_media,
     update_command_status,
 )
 from ..core.config import UPLOAD_DIR, ISRAEL_TZ
@@ -126,7 +126,7 @@ async def delete_media(device_id: str, media_id: str):
         raise HTTPException(status_code=404, detail="Device not found")
 
     device = devices[device_id]
-    item = remove_media(device, media_id)
+    item = pop_media(device, media_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Media not found")
 
