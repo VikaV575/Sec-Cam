@@ -35,8 +35,10 @@ def test_create_device_persists_and_returns_new_device():
         "id": "device-fixed-id",
         "name": "Backyard Cam",
         "last_seen": None,
+        "media": [],
+        "commands": [],
     }
-    assert "device-fixed-id" in devices
+    assert devices["device-fixed-id"] == response.json()
     mock_save_devices.assert_called_once()
 
 
@@ -64,10 +66,14 @@ def test_command_returns_409_when_device_is_offline():
     device_id = "offline-device"
     devices[device_id] = {"id": device_id, "name": "Patio", "last_seen": None}
 
-    with patch(
-        "backend.app.routers.devices.ws_manager.push_command",
-        new_callable=AsyncMock,
-        side_effect=HTTPException(status_code=409, detail="Device is offline"),
+    with (
+        patch("backend.app.core.activity.uuid.uuid4", return_value="offline-command-id"),
+        patch("backend.app.routers.devices.save_devices"),
+        patch(
+            "backend.app.routers.devices.ws_manager.push_command",
+            new_callable=AsyncMock,
+            side_effect=HTTPException(status_code=409, detail="Device is offline"),
+        ),
     ):
         response = client.post(
             f"/devices/{device_id}/command",
@@ -76,6 +82,11 @@ def test_command_returns_409_when_device_is_offline():
 
     assert response.status_code == 409
     assert response.json() == {"detail": "Device is offline"}
+
+    command = devices[device_id]["commands"][0]
+    assert command["id"] == "offline-command-id"
+    assert command["status"] == "failed"
+    assert command["error"] == "Device is offline"
 
 
 def test_get_live_info_returns_stream_urls():
