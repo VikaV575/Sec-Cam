@@ -2,8 +2,8 @@ from backend.app.core.activity import (
     add_command,
     add_media,
     ensure_activity,
+    pop_media,
     prune_missing_media,
-    remove_media,
     update_command_status,
 )
 
@@ -77,13 +77,13 @@ def test_prune_missing_media_removes_stale_metadata(tmp_path):
         "commands": [],
     }
 
-    changed = prune_missing_media(device, tmp_path)
+    removed = prune_missing_media(device, tmp_path)
 
-    assert changed is True
+    assert [item["id"] for item in removed] == ["missing"]
     assert [item["id"] for item in device["media"]] == ["existing"]
 
 
-def test_remove_media_returns_and_removes_matching_item():
+def test_pop_media_returns_and_removes_matching_item():
     device = {
         "media": [
             {"id": "first", "filename": "first.jpg"},
@@ -92,7 +92,7 @@ def test_remove_media_returns_and_removes_matching_item():
         "commands": [],
     }
 
-    removed = remove_media(device, "first")
+    removed = pop_media(device, "first")
 
     assert removed["filename"] == "first.jpg"
     assert [item["id"] for item in device["media"]] == ["second"]
