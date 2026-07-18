@@ -1,6 +1,7 @@
 import mimetypes
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import quote
 
 
@@ -78,6 +79,11 @@ def _media_type(filename: str, content_type: str | None) -> tuple[str, str]:
     return "file", guessed_type
 
 
+def media_path(upload_dir: str, filename: str) -> Path:
+    """Return a path inside upload_dir, ignoring any directory parts in filename."""
+    return Path(upload_dir) / Path(filename).name
+
+
 def add_media(
     device: dict,
     filename: str,
@@ -100,3 +106,33 @@ def add_media(
     device["media"].insert(0, item)
     del device["media"][MAX_MEDIA_ITEMS:]
     return item
+
+
+def pop_media(device: dict, media_id: str) -> dict | None:
+    ensure_activity(device)
+
+    for index, item in enumerate(device["media"]):
+        if item.get("id") == media_id:
+            return device["media"].pop(index)
+
+    return None
+
+
+def prune_missing_media(device: dict, upload_dir: str) -> list[dict]:
+    """Remove media metadata whose local file no longer exists."""
+    ensure_activity(device)
+
+    existing = []
+    removed = []
+
+    for item in device["media"]:
+        filename = item.get("filename")
+        if filename and media_path(upload_dir, filename).is_file():
+            existing.append(item)
+        else:
+            removed.append(item)
+
+    if removed:
+        device["media"] = existing
+
+    return removed
