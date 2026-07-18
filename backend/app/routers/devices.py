@@ -10,6 +10,7 @@ from ..core.activity import (
     ensure_activity,
     pop_media,
     prune_missing_media,
+    trim_command_history,
     update_command_status,
 )
 from ..core.config import UPLOAD_DIR, ISRAEL_TZ
@@ -153,6 +154,8 @@ async def list_devices():
 
     for device in devices.values():
         ensure_activity(device)
+        if trim_command_history(device):
+            activity_changed = True
         if prune_missing_media(device, UPLOAD_DIR):
             activity_changed = True
 
