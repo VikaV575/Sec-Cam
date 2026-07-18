@@ -1,4 +1,11 @@
-from backend.app.core.activity import add_command, add_media, ensure_activity, update_command_status
+from backend.app.core.activity import (
+    add_command,
+    add_media,
+    ensure_activity,
+    prune_missing_media,
+    remove_media,
+    update_command_status,
+)
 
 
 def test_add_command_creates_trackable_queued_record():
@@ -57,3 +64,35 @@ def test_ensure_activity_upgrades_existing_devices():
 
     assert device["media"] == []
     assert device["commands"] == []
+
+
+def test_prune_missing_media_removes_stale_metadata(tmp_path):
+    existing = tmp_path / "existing.jpg"
+    existing.write_bytes(b"image")
+    device = {
+        "media": [
+            {"id": "existing", "filename": existing.name},
+            {"id": "missing", "filename": "missing.jpg"},
+        ],
+        "commands": [],
+    }
+
+    changed = prune_missing_media(device, tmp_path)
+
+    assert changed is True
+    assert [item["id"] for item in device["media"]] == ["existing"]
+
+
+def test_remove_media_returns_and_removes_matching_item():
+    device = {
+        "media": [
+            {"id": "first", "filename": "first.jpg"},
+            {"id": "second", "filename": "second.jpg"},
+        ],
+        "commands": [],
+    }
+
+    removed = remove_media(device, "first")
+
+    assert removed["filename"] == "first.jpg"
+    assert [item["id"] for item in device["media"]] == ["second"]
