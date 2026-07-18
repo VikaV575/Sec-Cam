@@ -39,7 +39,6 @@ def test_ws_heartbeat_updates_last_seen_and_disconnects():
     with patch("backend.app.routers.device_ws.save_devices") as mock_save_devices:
         with client.websocket_connect(f"/devices/{device_id}/ws") as websocket:
             assert device_id in ws_manager.ws_by_device
-
             assert devices[device_id]["last_seen"] is not None
 
             websocket.send_json({"type": "heartbeat"})
@@ -59,19 +58,33 @@ def test_ws_heartbeat_updates_last_seen_and_disconnects():
 
 def test_ws_connected_device_receives_command_via_rest():
     device_id = "integration-command"
-    devices[device_id] = {"id": device_id, "name": "Porch", "last_seen": None}
+    devices[device_id] = {
+        "id": device_id,
+        "name": "Porch",
+        "last_seen": None,
+        "media": [],
+        "commands": [],
+    }
     command = {"type": "record", "seconds": 6}
 
-    with patch("backend.app.routers.device_ws.save_devices"):
-        with client.websocket_connect(f"/devices/{device_id}/ws") as websocket:
-            response = client.post(f"/devices/{device_id}/command", json=command)
+    with client.websocket_connect(f"/devices/{device_id}/ws") as websocket:
+        response = client.post(f"/devices/{device_id}/command", json=command)
 
-            assert response.status_code == 200
-            assert response.json() == {
-                "ok": True,
-                "message": "Command queued for online device",
-            }
-            assert websocket.receive_json() == {
-                "type": "command",
-                "command": command,
-            }
+        assert response.status_code == 200
+        response_data = response.json()
+        tracked_command = response_data["command"]
+
+        assert response_data["ok"] is True
+        assert response_data["message"] == "Command queued for online device"
+        assert tracked_command["type"] == "record"
+        assert tracked_command["seconds"] == 6
+        assert tracked_command["status"] == "queued"
+        assert tracked_command["id"]
+
+        websocket_payload = websocket.receive_json()
+        assert websocket_payload["type"] == "command"
+        assert websocket_payload["command"] == {
+            "type": "record",
+            "seconds": 6,
+            "id": tracked_command["id"],
+        }
