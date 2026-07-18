@@ -45,6 +45,17 @@ docker-compose.yml
 mediamtx.yml
 ```
 
+## Challenges Solved
+
+Some of the engineering challenges explored in this project include:
+
+- keeping a remote device connected reliably
+- distinguishing online vs offline state
+- sending commands asynchronously
+- handling media uploads from an edge device
+- integrating live camera streaming into the browser
+- structuring a project across frontend / backend / device layers
+- 
 ## Main API Endpoints
 
 | Method | Endpoint | Purpose |
